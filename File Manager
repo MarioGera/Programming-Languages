@@ -151,3 +151,15 @@ public class FileManager {
         }
     }
 }
+
+
+to run :
+javac FileManager.java
+java FileManager create-file /path/to/file.txt
+java FileManager delete-file /path/to/file.txt
+java FileManager create-dir /path/to/directory
+java FileManager delete-dir /path/to/directory
+java FileManager list /path/to/directory
+java FileManager write-file /path/to/file.txt "Content to write"
+java FileManager read-file /path/to/file.txt
+
