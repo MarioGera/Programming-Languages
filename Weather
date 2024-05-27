@@ -1,0 +1,126 @@
+Server Side:
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+public class WeatherDataServer {
+    private static final int PORT = 12345;
+    private static Map<String, String> weatherData = new HashMap<>();
+
+    public static void main(String[] args) {
+        loadWeatherData("weather_data.txt");
+
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Weather Data Server started...");
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                InetAddress clientAddress = clientSocket.getInetAddress();
+                System.out.println("Client connected: " + clientAddress);
+
+                new Thread(new ClientHandler(clientSocket)).start();
+            }
+        } catch (IOException e) {
+            System.err.println("Server exception: " + e.getMessage());
+        }
+    }
+
+    private static void loadWeatherData(String fileName) {
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(":");
+                if (parts.length == 2) {
+                    weatherData.put(parts[0].trim(), parts[1].trim());
+                }
+            }
+            System.out.println("Weather data loaded.");
+        } catch (IOException e) {
+            System.err.println("Error loading weather data: " + e.getMessage());
+        }
+    }
+
+    private static class ClientHandler implements Runnable {
+        private Socket socket;
+
+        public ClientHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+
+                String cityName;
+                while ((cityName = in.readLine()) != null) {
+                    if (cityName.equalsIgnoreCase("exit")) {
+                        break;
+                    }
+                    String weatherInfo = weatherData.getOrDefault(cityName, "City not found");
+                    out.println(weatherInfo);
+                }
+            } catch (IOException e) {
+                System.err.println("ClientHandler exception: " + e.getMessage());
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    System.err.println("Error closing socket: " + e.getMessage());
+                }
+                System.out.println("Client disconnected");
+            }
+        }
+    }
+}
+
+
+Client side :
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+public class WeatherInfoClient {
+    private static final String SERVER_ADDRESS = "localhost";
+    private static final int SERVER_PORT = 12345;
+
+    public static void main(String[] args) {
+        try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             Scanner scanner = new Scanner(System.in)) {
+
+            System.out.println("Connected to Weather Data Server");
+
+            String cityName;
+            while (true) {
+                System.out.print("Enter city name (or type 'exit' to quit): ");
+                cityName = scanner.nextLine();
+                out.println(cityName);
+
+                if (cityName.equalsIgnoreCase("exit")) {
+                    break;
+                }
+
+                String weatherInfo = in.readLine();
+                System.out.println("Weather info: " + weatherInfo);
+            }
+        } catch (IOException e) {
+            System.err.println("Client exception: " + e.getMessage());
+        }
+    }
+}
+----
+Start server:
+javac WeatherDataServer.java
+java WeatherDataServer
+----
+Start Client:
+javac WeatherInfoClient.java
+java WeatherInfoClient
+------
+wether app txt file:
+Skopje:Sunny, 25°C
+Bitola:Partly Cloudy, 28°C
+Prilep:Rainy, 20°C
+Ohrid:Clear Night, 25°C
+Stip:Windy, 20°C
