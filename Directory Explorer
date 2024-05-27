@@ -1,0 +1,166 @@
+import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class DirectoryExplorer {
+    private static Path currentDirectory;
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        currentDirectory = Paths.get(System.getProperty("user.dir"));
+        
+        while (true) {
+            System.out.print(currentDirectory + " > ");
+            String input = scanner.nextLine().trim();
+            if (input.equals("exit")) {
+                break;
+            }
+            processCommand(input);
+        }
+        scanner.close();
+    }
+
+    private static void processCommand(String input) {
+        String[] parts = input.split(" ", 2);
+        String command = parts[0];
+        String argument = parts.length > 1 ? parts[1] : null;
+
+        try {
+            switch (command) {
+                case "navigate":
+                    navigate(argument);
+                    break;
+                case "list":
+                    list();
+                    break;
+                case "search-files":
+                    searchFiles(argument);
+                    break;
+                case "details":
+                    details(argument);
+                    break;
+                case "list-size":
+                    String[] sizeArgs = argument.split(" ");
+                    listSize(Long.parseLong(sizeArgs[0]), Long.parseLong(sizeArgs[1]));
+                    break;
+                case "compare":
+                    String[] compareArgs = argument.split(" ");
+                    compareFiles(compareArgs[0], compareArgs[1]);
+                    break;
+                case "tree-view":
+                    treeView(currentDirectory, "");
+                    break;
+                case "filter-extension":
+                    filterExtension(argument);
+                    break;
+                default:
+                    System.out.println("Unknown command: " + command);
+            }
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void navigate(String path) throws IOException {
+        Path targetPath = currentDirectory.resolve(path).normalize();
+        if (Files.isDirectory(targetPath)) {
+            currentDirectory = targetPath.toRealPath();
+            System.out.println("Navigated to: " + currentDirectory);
+        } else {
+            System.out.println("Invalid directory: " + path);
+        }
+    }
+
+    private static void list() throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(currentDirectory)) {
+            for (Path entry : stream) {
+                System.out.println(entry.getFileName());
+            }
+        }
+    }
+
+    private static void searchFiles(String keyword) throws IOException {
+        Files.walk(currentDirectory)
+            .filter(Files::isRegularFile)
+            .filter(p -> p.getFileName().toString().contains(keyword))
+            .forEach(System.out::println);
+    }
+
+    private static void details(String filename) throws IOException {
+        Path filePath = currentDirectory.resolve(filename);
+        if (Files.exists(filePath) && Files.isRegularFile(filePath)) {
+            BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
+            System.out.println("Size: " + attrs.size() + " bytes");
+            System.out.println("Last modified: " + attrs.lastModifiedTime());
+            System.out.println("Type: " + Files.probeContentType(filePath));
+        } else {
+            System.out.println("File not found: " + filename);
+        }
+    }
+
+    private static void listSize(long minSize, long maxSize) throws IOException {
+        Files.walk(currentDirectory)
+            .filter(Files::isRegularFile)
+            .filter(p -> {
+                try {
+                    long size = Files.size(p);
+                    return size >= minSize && size <= maxSize;
+                } catch (IOException e) {
+                    return false;
+                }
+            })
+            .forEach(System.out::println);
+    }
+
+    private static void compareFiles(String file1, String file2) throws IOException {
+        Path path1 = currentDirectory.resolve(file1);
+        Path path2 = currentDirectory.resolve(file2);
+
+        if (Files.isRegularFile(path1) && Files.isRegularFile(path2)) {
+            byte[] file1Bytes = Files.readAllBytes(path1);
+            byte[] file2Bytes = Files.readAllBytes(path2);
+
+            if (Arrays.equals(file1Bytes, file2Bytes)) {
+                System.out.println("Files are identical.");
+            } else {
+                System.out.println("Files are different.");
+            }
+        } else {
+            System.out.println("One or both files do not exist or are not regular files.");
+        }
+    }
+
+    private static void treeView(Path path, String indent) throws IOException {
+        if (Files.isDirectory(path)) {
+            System.out.println(indent + path.getFileName());
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
+                for (Path entry : stream) {
+                    treeView(entry, indent + "  ");
+                }
+            }
+        } else {
+            System.out.println(indent + path.getFileName());
+        }
+    }
+
+    private static void filterExtension(String extension) throws IOException {
+        Files.walk(currentDirectory)
+            .filter(Files::isRegularFile)
+            .filter(p -> p.getFileName().toString().endsWith(extension))
+            .forEach(System.out::println);
+    }
+}
+to run :
+javac DirectoryExplorer.java
+java DirectoryExplorer
+------
+navigate /path/to/directory
+list
+search-files keyword
+details filename
+list-size min-size max-size
+compare file1 file2
+tree-view
+filter-extension .txt
