@@ -1,0 +1,153 @@
+import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Scanner;
+
+public class FileManager {
+
+    public static void main(String[] args) {
+        if (args.length < 2 || args.length > 3) {
+            System.out.println("Usage:");
+            System.out.println("  create-file <path>");
+            System.out.println("  delete-file <path>");
+            System.out.println("  create-dir <path>");
+            System.out.println("  delete-dir <path>");
+            System.out.println("  list <path>");
+            System.out.println("  write-file <path> <content>");
+            System.out.println("  read-file <path>");
+            return;
+        }
+
+        String command = args[0];
+        String path = args[1];
+        File file = new File(path);
+
+        try {
+            switch (command) {
+                case "create-file":
+                    createFile(file);
+                    break;
+                case "delete-file":
+                    deleteFile(file);
+                    break;
+                case "create-dir":
+                    createDir(file);
+                    break;
+                case "delete-dir":
+                    deleteDir(file);
+                    break;
+                case "list":
+                    listFiles(file);
+                    break;
+                case "write-file":
+                    if (args.length != 3) {
+                        System.out.println("Invalid number of arguments for write-file.");
+                        return;
+                    }
+                    writeFile(file, args[2]);
+                    break;
+                case "read-file":
+                    readFile(file);
+                    break;
+                default:
+                    System.out.println("Unknown command: " + command);
+            }
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void createFile(File file) throws IOException {
+        if (file.exists()) {
+            System.out.println("File already exists: " + file.getPath());
+        } else {
+            if (file.createNewFile()) {
+                System.out.println("File created: " + file.getPath());
+            } else {
+                System.out.println("Failed to create file: " + file.getPath());
+            }
+        }
+    }
+
+    private static void deleteFile(File file) throws IOException {
+        if (!file.exists()) {
+            System.out.println("File does not exist: " + file.getPath());
+        } else if (file.isDirectory()) {
+            System.out.println("Specified path is a directory, not a file: " + file.getPath());
+        } else {
+            if (file.delete()) {
+                System.out.println("File deleted: " + file.getPath());
+            } else {
+                System.out.println("Failed to delete file: " + file.getPath());
+            }
+        }
+    }
+
+    private static void createDir(File dir) throws IOException {
+        if (dir.exists()) {
+            System.out.println("Directory already exists: " + dir.getPath());
+        } else {
+            if (dir.mkdirs()) {
+                System.out.println("Directory created: " + dir.getPath());
+            } else {
+                System.out.println("Failed to create directory: " + dir.getPath());
+            }
+        }
+    }
+
+    private static void deleteDir(File dir) throws IOException {
+        if (!dir.exists()) {
+            System.out.println("Directory does not exist: " + dir.getPath());
+        } else if (!dir.isDirectory()) {
+            System.out.println("Specified path is not a directory: " + dir.getPath());
+        } else {
+            if (dir.list().length == 0) {
+                if (dir.delete()) {
+                    System.out.println("Directory deleted: " + dir.getPath());
+                } else {
+                    System.out.println("Failed to delete directory: " + dir.getPath());
+                }
+            } else {
+                System.out.println("Directory is not empty: " + dir.getPath());
+            }
+        }
+    }
+
+    private static void listFiles(File dir) throws IOException {
+        if (!dir.exists()) {
+            System.out.println("Path does not exist: " + dir.getPath());
+        } else if (!dir.isDirectory()) {
+            System.out.println("Specified path is not a directory: " + dir.getPath());
+        } else {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    System.out.println(f.getName());
+                }
+            } else {
+                System.out.println("Failed to list files in directory: " + dir.getPath());
+            }
+        }
+    }
+
+    private static void writeFile(File file, String content) throws IOException {
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.write(content);
+            System.out.println("Content written to file: " + file.getPath());
+        }
+    }
+
+    private static void readFile(File file) throws IOException {
+        if (!file.exists()) {
+            System.out.println("File does not exist: " + file.getPath());
+        } else if (file.isDirectory()) {
+            System.out.println("Specified path is a directory, not a file: " + file.getPath());
+        } else {
+            try (Scanner scanner = new Scanner(file)) {
+                while (scanner.hasNextLine()) {
+                    System.out.println(scanner.nextLine());
+                }
+            }
+        }
+    }
+}
